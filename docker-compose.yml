@@ -1,0 +1,46 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: gym-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-gymdb}
+      POSTGRES_USER: ${POSTGRES_USER:-gym}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cambia_esta_password}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gym} -d ${POSTGRES_DB:-gymdb}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    container_name: gym-backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=${POSTGRES_DB:-gymdb};Username=${POSTGRES_USER:-gym};Password=${POSTGRES_PASSWORD:-cambia_esta_password}"
+      Jwt__Key: ${JWT_KEY:-cambia_esta_clave_jwt_minimo_32_caracteres}
+      Jwt__Issuer: ${JWT_ISSUER:-AppFussionGym}
+      Jwt__Audience: ${JWT_AUDIENCE:-AppFussionGym}
+      Admin__Username: ${ADMIN_USERNAME:-admin}
+      Admin__Password: ${ADMIN_PASSWORD:-cambia_esta_password}
+      ASPNETCORE_HTTP_PORTS: "8080"
+    ports:
+      - "5000:8080"
+
+  frontend:
+    build: ./frontend
+    container_name: gym-frontend
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+volumes:
+  pgdata:
+
